@@ -90,6 +90,8 @@ void clearSerialInput()
 }
 
 //These are the characters that can be used in passwords, they are arranged in this way for easy implementation of the optional "use specials" feature of the password generator.
+#define UTF8 char(0xc3)
+
 const char passChars[] = {
 '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E',
 'F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T',
@@ -97,7 +99,10 @@ const char passChars[] = {
 'j','k','l','m','n','o','p','q','r','s','t','u','v','w','x', //last normal as number 62 (idx 61)
 'y','z','!','"','#','$','%','&','@','?','(',')','[',']','-', // <75 (idx 75)
 '.',',','+','{','}','_','/','<','>','=','|','\'','\\', 
-';',':',' ','*'// <- 92 (idx 91)
+';',':',' ','*', // <- 92 (idx 91)
+UTF8, 0x84, UTF8, 0x96, UTF8, 0x9c, // Ä Ö Ü
+UTF8, 0xA4, UTF8, 0xB6, UTF8, 0xBc, // ä ö ü
+UTF8, 0x9f // ß  <- 106 (idx 105)
 };
 
 //Reads string from serial, zero terminates the string
@@ -117,6 +122,7 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
   char inchar;
   uint8_t index=0;
   char scramble=0;
+  bool isUtf8=false;
 
   memset( dst, 0, numChars+1 );
   while( 1 )
@@ -148,6 +154,10 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
         } else if(index > 0 )
         {
           dst[--index]=0;
+          if(dst[index-1]==UTF8)  // UTF8 has 2 Bytes
+          {
+            dst[--index]=0;
+          }
         }
       } else if( inchar == 13 ) //If Enter is pressed
       {
@@ -160,8 +170,38 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
       } else if( index == numChars ) //If this key makes the string longer than allowed
       {
         goto GETSTR_RETERR;
-      } else {
-        for(keycheck=0; keycheck < 92; keycheck++ )
+      } else if( inchar == UTF8)
+      {
+        isUtf8 = true;  // next char is 2nd Byte of UTF8 code
+        if(scramble)  // don't think that scramble works with UTF8
+        {
+          inchar = (inchar^random(254)+1)&0xFF;
+        }
+        dst[index++] = inchar;
+      } else if( isUtf8 )
+      {
+        isUtf8 = false;
+        for(keycheck=92; keycheck < 106; keycheck+=2 ) // check UTF8
+        {
+          if(passChars[keycheck+1] == inchar)
+          {
+            break;
+          }
+        }
+        if(keycheck == 106 )
+        {
+          ptxt("\r\n[Unsupported:");Serial.print(inchar);ptxtln("]");
+          goto GETSTR_RETERR;
+        } else {
+          if(scramble)  // don't think that scramble works with UTF8
+          {
+            inchar = (inchar^random(254)+1)&0xFF;
+          }
+          dst[index++] = inchar;
+        }
+      } else
+      {
+        for(keycheck=0; keycheck < 92; keycheck++ ) // check non-UTF8
         {
           if(passChars[keycheck] == inchar)
           {
@@ -1632,4 +1672,5 @@ void loop()
   I2E.power(LOW);
 
 }
+
 
