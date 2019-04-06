@@ -73,6 +73,7 @@ uint16_t lastEntryNum[]={0,0,0,0};
 
 
 const char clsStr[] = { 27, '[', '2','J',27,'[','H',0 };
+unsigned char utf8First = 0;  // First char of a UTF8 sequence, 0 = no UTF8 code
 
 //Actually saves a bit of memory to have this function and the char array, instead of printing it each time, clears the screen, don't abuse.
 void cls()
@@ -518,6 +519,62 @@ uint8_t strToHex( char* str )
   return(ret);
 }
 
+// New keypoard type fuction to support some UTF8 chars
+void typeUtf8( unsigned char c )
+{
+  if( utf8First > 0 )  // this is the second char of a UTF8 code
+  {
+    // Keyboard_writeUtf8Character (utf8First, ch)
+    if( utf8First == 0xC3)  // KBMAP_A must be in use and DE to work
+    {
+      kbmaps.setKbMapQ(KBMAP_B);
+      switch(c) {
+        case 0xA4:  //ä
+          Keyboard.write('\'');
+        break;
+        case 0xB6:  //ö
+          Keyboard.write(';');
+        break;
+        case 0xBC:  //ü
+          Keyboard.write('[');
+        break;
+        case 0x84:  //Ä
+          Keyboard.write('"');
+        break;
+        case 0x96:  //Ö
+          Keyboard.write(':');
+        break;
+        case 0x9C:  //Ü
+          Keyboard.write('{');
+        break;
+        case 0x9f:  //ß
+          Keyboard.write('-');
+        break;
+      }
+      kbmaps.setKbMapQ(KBMAP_A);  // select DE keyboard
+    }      
+    utf8First = 0;
+  }
+  else if( c < 128 ) // char is standard code
+  {
+    Keyboard.write(c);
+  }
+  else
+  { 
+    utf8First = c;  // first char of UTF8 code
+  }
+}
+
+void printUtf8( char* str)
+{
+  int i=0; 
+  while(str[i]!='\0')
+  {
+    typeUtf8(str[i]);
+    i++;
+  }
+}
+
 bool testChars()
 {
   int i;
@@ -632,7 +689,8 @@ void fireEntry(uint8_t what, int16_t entryNum, bool noWait)
       
       if( entry.passwordOffset == 0 && entry.seperator == 0 )
       {
-        Keyboard.print( entry.data );
+        //Keyboard.print( entry.data );
+        printUtf8( entry.data );
         ptxt(" [M]");
       } else {
       
@@ -641,7 +699,8 @@ void fireEntry(uint8_t what, int16_t entryNum, bool noWait)
         
         if( what == CMD_FIRE_BOTH || what == CMD_FIRE_USER )
         {
-          Keyboard.print( entry.data );
+          //Keyboard.print( entry.data );
+          printUtf8( entry.data );
           ptxt(" [U]");
         }
         
@@ -654,7 +713,8 @@ void fireEntry(uint8_t what, int16_t entryNum, bool noWait)
         
         if( what == CMD_FIRE_BOTH || what == CMD_FIRE_PASS )
         {
-          Keyboard.print( (entry.data)+entry.passwordOffset );
+          //Keyboard.print( (entry.data)+entry.passwordOffset );
+          printUtf8( (entry.data)+entry.passwordOffset );
           ptxt(" [P]");
         }
         

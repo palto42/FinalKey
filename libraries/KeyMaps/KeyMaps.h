@@ -25,6 +25,7 @@ class KeyMaps
 {
   public:
        void setKbMap(uint8_t keyMap);
+       void setKbMapQ(uint8_t keyMap);  // quiet, no output
 };
 
 #define NOMOD 0x00
@@ -52,10 +53,10 @@ class KeyMaps
 
 // To save flash, include only 4 layouts.
 // Edit these to include layouts, valid choices are the above.
-#define KBMAP_A KBMAP_EEPC
-#define KBMAP_C KBMAP_DKPC
+#define KBMAP_A KBMAP_DEPC
 #define KBMAP_B KBMAP_USPC
-//#define KBMAP_D KBMAP_SEMAC
+#define KBMAP_C KBMAP_DEMAC
+#define KBMAP_D KBMAP_USMAC
 
 #include "keymap-us.h"
 #include "keymap-dk.h"
