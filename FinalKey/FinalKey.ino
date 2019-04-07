@@ -90,6 +90,29 @@ uint8_t utf8Warn = 0;
 unsigned long lockTimeout = 0;
 
 
+void StreamPrint_progmem(Print &out,PGM_P format,...)
+// see http://www.utopiamechanicus.com/article/low-memory-serial-print/
+// Serialprint("Count %d, Data: %d",count,data);
+{
+  // program memory version of printf - copy of format string and result share a buffer
+  // so as to avoid too much memory use
+  char formatString[128], *ptr;
+  strncpy_P( formatString, format, sizeof(formatString) ); // copy in from program mem
+  // null terminate - leave last char since we might need it in worst case for result's \0
+  formatString[ sizeof(formatString)-2 ]='\0'; 
+  ptr=&formatString[ strlen(formatString)+1 ]; // our result buffer...
+  va_list args;
+  va_start (args,format);
+  vsnprintf(ptr, sizeof(formatString)-1-strlen(formatString), formatString, args );
+  va_end (args);
+  formatString[ sizeof(formatString)-1 ]='\0'; 
+  out.print(ptr);
+} 
+
+#define Serialprint(format, ...) StreamPrint_progmem(Serial,PSTR(format),##__VA_ARGS__)
+#define Streamprint(stream,format, ...) StreamPrint_progmem(stream,PSTR(format),##__VA_ARGS__)
+
+
 //Actually saves a bit of memory to have this function and the char array, instead of printing it each time, clears the screen, don't abuse.
 void cls()
 {
@@ -211,7 +234,9 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
         }
         if(keycheck == maxChar )
         {
-          ptxt("\r\n[Unsupported:");Serial.print(inchar);  //ptxtln("]");  // testing
+          //ptxt("\r\n[Unsupported:");
+          Serialprint("\r\n[Unsupported: %c",inchar);
+          //Serial.print(inchar);  //ptxtln("]");  // testing
           goto GETSTR_RETERR;
         } else {
           if(scramble)  // don't think that scramble works with UTF8
