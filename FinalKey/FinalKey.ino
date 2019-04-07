@@ -354,69 +354,6 @@ void getKbLayout()
   }//While 1 ends here
 }
 
-void setAutoLock()
-{
-  uint8_t k;
-  while(1)
-  {
-    ptxtln("Enter auto-lock time (1-256 minutes, 0=off):");
-  ptxt("% ");
-
-    k = getOneChar()-'0';
-      switch(k)
-      {
-        #ifdef KBMAP_A
-        case 1:
-          k=KBMAP_A;
-        break;
-        #endif
-        #ifdef KBMAP_B
-        case 2:
-          k=KBMAP_B;
-        break;
-        #endif
-        #ifdef KBMAP_C
-        case 3:
-          k=KBMAP_C;
-        break;
-        #endif
-        #ifdef KBMAP_D
-        case 4:
-          k=KBMAP_D;
-        break;
-        #endif
-        default:
-          k=INVALID_KEYBOARD_LAYOUT;
-        break;
-      }
-      if( k == INVALID_KEYBOARD_LAYOUT )
-      {
-        ptxtln("\r\n[Invalid choice]");
-      } else {
-        kbmaps.setKbMap(k);
-        if( testChars(k) )
-        {
-          ES.setKeyboardLayout(k);
-          keyMap=k;
-          if( keyMap == KBMAP_DEPC )
-          {
-            keyMapUtf8=KBMAP_USPC;
-          }
-          else if ( keyMap == KBMAP_DEMAC )
-          {
-            keyMapUtf8=KBMAP_USMAC;
-          } else
-          {
-            keyMap = 0;  // no UTF8 support yet
-          }
-          ptxtln("\r\n[saved]");
-          return;
-        }
-      }
-    Serial.println();
-  }//While 1 ends here
-}
-
 //User-friendly format process.
 //This function must not exit before a successfull format.
 void format()
