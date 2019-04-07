@@ -194,7 +194,7 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
       } else if( inchar >= UTF8)
       {
         isUtf8 = true;  // next char is 2nd Byte of UTF8 code
-        if(scramble)  // don't think that scramble works with UTF8
+        if(scramble)
         {
           inchar = (inchar^random(254)+1)&0xFF;
         }
@@ -211,10 +211,10 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
         }
         if(keycheck == maxChar )
         {
-          ptxt("\r\n[Unsupported:");Serial.print(inchar);  //ptxtln("]");  // testing
+          ptxt("\r\n[Unsupported:");Serial.print(inchar);ptxtln("]");
           goto GETSTR_RETERR;
         } else {
-          if(scramble)  // don't think that scramble works with UTF8
+          if(scramble)
           {
             inchar = (inchar^random(254)+1)&0xFF;
           }
