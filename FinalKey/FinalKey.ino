@@ -1,6 +1,6 @@
 /*
-  The Final Key is an encrypted hardware password manager, 
-  this is the sourcecode for the firmware. 
+  The Final Key is an encrypted hardware password manager,
+  this is the sourcecode for the firmware.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  
+
   Modified version:
     Author: palto42
     Date: 07.04.2019
@@ -103,7 +103,7 @@ void clearSerialInput()
   {
     Serial.read();
     delay(20); //Wait a bit, host may have more buffered.
-  }  
+  }
 }
 
 //These are the characters that can be used in passwords, they are arranged in this way for easy implementation of the optional "use specials" feature of the password generator.
@@ -118,7 +118,7 @@ const unsigned char passChars[] = {
 'U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i',
 'j','k','l','m','n','o','p','q','r','s','t','u','v','w','x', //last normal as number 62 (idx 61)
 'y','z','!','"','#','$','%','&','@','?','(',')','[',']','-', // <75 (idx 75)
-'.',',','+','{','}','_','/','<','>','=','|','\'','\\', 
+'.',',','+','{','}','_','/','<','>','=','|','\'','\\',
 ';',':',' ','*', // <- 92 (idx 91)
 '~',  // usually supported
 '^','`',  // double stroke on DE <- 95 (idx 94)
@@ -145,12 +145,12 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
   uint8_t index=0;
   char scramble=0;
   unsigned char isUtf8=0;
-  
+
 
   memset( dst, 0, numChars+1 );
   while( 1 )
   {
-    
+
     if( !digitalRead(btnPin) )
     {
       while( !digitalRead(btnPin) ) { };
@@ -193,17 +193,6 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
       } else if( index == numChars ) //If this key makes the string longer than allowed
       {
         goto GETSTR_RETERR;
-<<<<<<< HEAD
-      } else if( inchar >= UTF8)
-      {
-        isUtf8 = true;  // next char is 2nd Byte of UTF8 code
-        if(scramble)
-        {
-          inchar = (inchar^random(254)+1)&0xFF;
-        }
-        dst[index++] = inchar;
-=======
->>>>>>> palto
       } else if( isUtf8 )
       {
         for(keycheck=doubleChar; keycheck < maxChar; keycheck+=2 ) // check UTF8
@@ -223,10 +212,7 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
           isUtf8 = 0;
           goto GETSTR_RETERR;
         } else {
-<<<<<<< HEAD
-=======
           isUtf8 = 0;
->>>>>>> palto
           if(scramble)
           {
             inchar = (inchar^random(254)+1)&0xFF;
@@ -257,14 +243,14 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
           ptxtln("]");
           goto GETSTR_RETERR;
         } else {
-          
+
           if(scramble)
           {
             inchar = (inchar^random(254)+1)&0xFF;
           }
-          
+
           dst[index++] = inchar;
-          
+
         }
       }
 
@@ -282,7 +268,7 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
         goto GETSTR_RETERR;
     }
   }
-  
+
   GETSTR_RETERR:
     setRng();
     return(0);
@@ -312,7 +298,7 @@ void getKbLayout()
     ptxtln("Select keyboard layout:");
     printKbLayoutList();
   ptxt("% ");
-    
+
     k = getOneChar()-'0';
       switch(k)
       {
@@ -344,7 +330,7 @@ void getKbLayout()
       {
         ptxtln("\r\n[Invalid choice]");
       } else {
-        kbmaps.setKbMap(k); 
+        kbmaps.setKbMap(k);
         if( testChars(k) )
         {
           ES.setKeyboardLayout(k);
@@ -375,7 +361,7 @@ void setAutoLock()
   {
     ptxtln("Enter auto-lock time (1-256 minutes, 0=off):");
   ptxt("% ");
-    
+
     k = getOneChar()-'0';
       switch(k)
       {
@@ -407,7 +393,7 @@ void setAutoLock()
       {
         ptxtln("\r\n[Invalid choice]");
       } else {
-        kbmaps.setKbMap(k); 
+        kbmaps.setKbMap(k);
         if( testChars(k) )
         {
           ES.setKeyboardLayout(k);
@@ -470,7 +456,7 @@ void format()
   }
   Serial.println();
   getKbLayout();
-  ES.format( (byte*)bufa, bufb ); 
+  ES.format( (byte*)bufa, bufb );
 }
 
 
@@ -478,22 +464,22 @@ void format()
 uint8_t btnWait( int timeOut )
 {
   int btnAbortTimeLeft=BTN_HOLD_TIME_FOR_ABORT;
-  
- 
+
+
   uint8_t state=1,onTime=0;
   uint8_t ret = BTN_NO;
   if(timeOut > 0)
   {
     Serial.println();
   }
-  
+
   while( timeOut != 0 )
   {
     if( (timeOut % 1000)==0 && timeOut > 0)
     {
       ptxt("\r");txt((int)(timeOut/1000));ptxt(" # ");
     }
-    
+
     delay(1);
     digitalWrite(ledPin, state);
     onTime++;
@@ -502,7 +488,7 @@ uint8_t btnWait( int timeOut )
       onTime=0;
       state=!state;
     }
-    
+
     //Button pin uses internal pullup, switch drags pin to gnd.
     if( !digitalRead(btnPin) )
     {
@@ -523,14 +509,14 @@ uint8_t btnWait( int timeOut )
   //Blink the led
   digitalWrite(ledPin, state);
 
-  
+
 
   clearSerialInput();
-  
+
   if(!Serial)
   {
     ret=BTN_NO;
-  } 
+  }
 
   digitalWrite(ledPin, HIGH);
   Serial.println("\r       \r");
@@ -560,7 +546,7 @@ uint8_t login(bool header)
       ptxt("}\r\nPass:");
     }
     getStr( key,32, 0 );
-   
+
     if( ES.unlock( (byte*)key ) )
     {
        lockTimeout = millis();
@@ -582,7 +568,7 @@ uint8_t login(bool header)
           {
             keyMap = 0;  // no UTF8 support yet
           }
-        }        
+        }
      } else {
        if(header)
        {
@@ -591,7 +577,7 @@ uint8_t login(bool header)
        }
      }
   }
-  
+
   return(ret);
 }
 
@@ -605,9 +591,9 @@ void setup() {
   Wire.begin();
   Serial.begin(9600);
 
-  setRng();  
+  setRng();
 
-  digitalWrite(btnPwr, LOW); //Sink 
+  digitalWrite(btnPwr, LOW); //Sink
   pinMode(btnPin, INPUT); // set pin to input
 
   //Enable internal pullups for button
@@ -630,7 +616,7 @@ void beat()
   }
   digitalWrite(ledPin, HIGH);
 
-  
+
 }
 
 bool isHex( char c )
@@ -711,14 +697,14 @@ void typeUtf8( unsigned char c )
     }
   }
   else
-  { 
+  {
     utf8First = c;  // first char of UTF8 code
   }
 }
 
 void printUtf8( char* str)
 {
-  int i=0; 
+  int i=0;
   while(str[i]!='\0')
   {
     typeUtf8(str[i]);
@@ -736,7 +722,7 @@ bool testChars(int k)
   int i;
   int max = extChar;
   char utf[] = "Ä";  // dummy UTF8
-  
+
   ptxt("\r\nTo verify the selected layout works, focus a blank text-field\r\nthen press the key or long-press to skip the test.\r\n#");
   if(btnWait(BTN_TIMEOUT_NO_TIMEOUT))
   {
@@ -761,7 +747,7 @@ bool testChars(int k)
         typeUtf8(passChars[i]);
       }
       delay(10);
-      
+
 //      if(i >= doubleChar)
 //      {
 //        typeUtf8(passChars[i++]);
@@ -785,17 +771,17 @@ void putRandomChars( char* dst, uint8_t len, uint8_t useSpecial, char* specials 
 {
   char pool[256];
   long maxRv = (useSpecial)?extChar-1:61; //Not numbers but indexes
-    
+
   memcpy( pool, passChars, maxRv );
-  
+
   if( specials )
   {
     memcpy( (pool+maxRv), specials, strlen(specials));
     maxRv += strlen(specials);
   }
-  
-  ptxtln("\r\n[generate]"); 
-  
+
+  ptxtln("\r\n[generate]");
+
   for( uint8_t idx = 0; idx < len; idx++)
   {
     Serial.print("\r[");
@@ -806,7 +792,7 @@ void putRandomChars( char* dst, uint8_t len, uint8_t useSpecial, char* specials 
     dst[idx] = pool[(uint8_t)Entropy.random(maxRv)];
   }
   ptxtln("\r[done]   ");
-  
+
 }
 
 void fireEntry(uint8_t what, int16_t entryNum, bool noWait)
@@ -839,8 +825,8 @@ void fireEntry(uint8_t what, int16_t entryNum, bool noWait)
         lastEntryIdx=0;
       }
     }
-    
-    ptxtln("\r\n");    
+
+    ptxtln("\r\n");
     switch(what)
     {
       case CMD_FIRE_BOTH:
@@ -861,61 +847,61 @@ void fireEntry(uint8_t what, int16_t entryNum, bool noWait)
     }
     txt(eName);
     ptxt(" ?\r\n");
-    
+
     if(noWait || btnWait(BTN_TIMEOUT_FIRE))
     {
       ES.getEntry(entryNum, &entry);
-      
+
       if( entry.passwordOffset == 0 && entry.seperator == 0 )
       {
         //Keyboard.print( entry.data );
         printUtf8( entry.data );
         ptxt(" [M]");
       } else {
-      
+
         //Empty serial input buffer
         clearSerialInput();
-        
+
         if( what == CMD_FIRE_BOTH || what == CMD_FIRE_USER )
         {
           //Keyboard.print( entry.data );
           printUtf8( entry.data );
           ptxt(" [U]");
         }
-        
+
         if( what == CMD_FIRE_BOTH )
         {
           Keyboard.write( entry.seperator );
           delay(150);
           ptxt(" [S]");
         }
-        
+
         if( what == CMD_FIRE_BOTH || what == CMD_FIRE_PASS )
         {
           //Keyboard.print( (entry.data)+entry.passwordOffset );
           printUtf8( (entry.data)+entry.passwordOffset );
           ptxt(" [P]");
         }
-        
+
         if( what == CMD_FIRE_BOTH )
         {
           Keyboard.write(10);
           ptxt(" [E]");
         }
-        
 
-        
+
+
         if( what == CMD_SHOW_BOTH )
         {
-          ptxt("\r\nAccount: ");          
+          ptxt("\r\nAccount: ");
           if(entryNum < 16)
           {
             Serial.write('0');
-          }          
+          }
           Serial.print(entryNum,HEX);
           Serial.print(" - ");
           Serial.print(eName);
-          
+
           ptxt("\r\n  Username: ");
           Serial.print( entry.data );
           ptxt("\r\n  Password: ");
@@ -923,11 +909,11 @@ void fireEntry(uint8_t what, int16_t entryNum, bool noWait)
           ptxt("\r\n");
         }
       }
-      
+
         //Empty serial input buffer (in case user triggered it to write into the finalkey)
         if( Serial.available() )
         {
-          clearSerialInput();     
+          clearSerialInput();
           ptxt("\r\n[ERROR] Wrong window, try again.");
           //Wohoo! A GOTO!! YES! FINALLY! (I could make it recursive, and risk stack overflow, or make a nasty while around the function, but I decided this was less noisy)
           goto REPEAT_FIRE;
@@ -990,7 +976,7 @@ int collectNum()
       }
     }
   }
-  Serial.println();  
+  Serial.println();
   return(strToHex(inp));
 }
 
@@ -1010,15 +996,15 @@ void newAccount(int entryNum)
     {
       ptxtln("\r\n[full]");
       return;
-    }    
-    
+    }
+
     if( !btnWait( BTN_TIMEOUT_IMPORTANT ) )
     {
       goto ABORT_NEW_ACCOUNT;
     }
   }
-    
-  
+
+
   ptxtln("Account Title, (0-31):");
   if( getStr( entry.title, 31, 1 ) )
   {
@@ -1051,7 +1037,7 @@ void newAccount(int entryNum)
               if( (atoi( inp ) < (maxLen+1) && atoi(inp) > 0) && strlen(inp)!=0 )
               {
                 ptxt("\r\nSpecials?\r\n 1 = All\r\n 2 = Choose\r\n 3 = None\r\n%");
-                
+
                 r=getOneChar()-'0';
                 if( r > 0 && r < 4 )
                 {
@@ -1067,18 +1053,18 @@ void newAccount(int entryNum)
                     putRandomChars( ((entry.data)+entry.passwordOffset),atoi(inp), (r==1), 0 );
                     save=1;
                   } //None or All
-                  
+
                 } //Correct input for auto-recipe
               } //Valid length for auto
             } //Got string for pass len
           } //Auto pass
-          
+
           //Get seperator
 
           if(save)
           {
             ptxt("\r\nSeperator?\r\n 1 = [TAB]\r\n 2 = [ENT]\r\n 3 = Choose\r\n%");
-  
+
             r=getOneChar()-'0';
             if( r==1 )
             {
@@ -1110,9 +1096,9 @@ void newAccount(int entryNum)
 
     } //Got username
   } //Got title
-  
+
   ABORT_NEW_ACCOUNT:
-  
+
   ptxtln("\r\n[abort]");
 }
 
@@ -1127,13 +1113,13 @@ void newMacro(int16_t entryNum)
   if(entryNum == -1 )
   {
     entryNum = ES.getNextEmpty();
-    
+
     if( entryNum== 256 )
     {
       ptxtln("\r\n[full]");
       return;
     }
-    
+
     if( !btnWait( BTN_TIMEOUT_IMPORTANT ) )
     {
       goto ABORT_NEW_MACRO;
@@ -1173,10 +1159,10 @@ void newMacro(int16_t entryNum)
       }
     }
 
-    
+
   }
-  
-  
+
+
   if(save)
   {
     ptxt("\r\n[save entry ");
@@ -1187,9 +1173,9 @@ void newMacro(int16_t entryNum)
     memcpy( entry.data, data, 190 );
     ES.putEntry( entryNum, &entry );
     ptxtln("[done]");
-    return; 
+    return;
   }
-  
+
   ABORT_NEW_MACRO:
   ptxtln("\r\n[abort]");
 }
@@ -1201,7 +1187,7 @@ void delEntry(bool override)
   int en = collectNum();
   uint8_t entryType=0;
   entry_t entry;
-  
+
   if(en != -1)
   {
     if( ES.getTitle((uint8_t)en,ename) )
@@ -1251,7 +1237,7 @@ void setMacro()
 {
   entry_t entry;
   int en = collectNum();
-  
+
   if( en != -1 )
   {
     if( ES.getTitle( en,(entry.title) ) )
@@ -1269,7 +1255,7 @@ void setMacro()
     }
   }
   ptxtln("[abort]");
-  
+
 }
 
 
@@ -1287,7 +1273,7 @@ void setBanner()
       return;
     }
   }
-  
+
   ptxt("\r\n[abort]");
 }
 
@@ -1310,20 +1296,20 @@ void entryList(int8_t dir)
   }
   uint16_t offset = page*44;
 
-  
+
   ptxt("Accounts [");
   txt(page);
   txt("/5]\r\n");
-  
+
   uint8_t len = 0;
-  
+
   uint8_t pageEnd=offset+44;
 
   while( offset < pageEnd )
   {
     if( ES.getTitle((uint8_t)offset, eName) )
     {
-    
+
       if( col )
       {
         uint8_t spaces = 43-len;
@@ -1345,11 +1331,11 @@ void entryList(int8_t dir)
 
         len+=strlen(eName);
         Serial.print(eName);
-      
-        
+
+
       if(col)
       {
-       Serial.print("\r\n"); 
+       Serial.print("\r\n");
        col=0;
       } else {
         col=1;
@@ -1357,7 +1343,7 @@ void entryList(int8_t dir)
     }
     offset++;
   }
-  
+
  if( col )
  {
    Serial.println();
@@ -1370,7 +1356,7 @@ void machineList()
   char eName[32];
 
   uint16_t i;
-      Serial.println();      
+      Serial.println();
   for(i=0; i < 256; i++)
   {
     if( ES.getTitle((uint8_t)i, eName) )
@@ -1386,7 +1372,7 @@ void machineList()
   }
   Serial.println("[KBL]");
   printKbLayoutList();
-  
+
  Serial.write('>');
 }
 
@@ -1402,7 +1388,7 @@ void strToUpper(char* str)
     }
     str++;
   }
-    
+
 }
 void search(uint8_t cmd)
 {
@@ -1474,7 +1460,7 @@ void changePass()
   char newPassA[33];
   char newPassB[33];
   char oldPass[33];
-  
+
   cls();
   ptxt("WARNING: This re-encrypts data, it takes around 3 seconds per account.\r\nIf power is lost while re-encrypting, data will be lost.\r\nDon't forget your new psw.\r\nAre you sure [y/n] ?");
   if( getOneChar() == 'y' )
@@ -1499,13 +1485,13 @@ void changePass()
               return;
             }
           }
-        }      
+        }
       }
     }
   }
-  
+
   ptxtln("\r\n[abort]");
-  
+
 }
 
 
@@ -1541,9 +1527,9 @@ void repeatEntry(uint8_t show)
         {
           Serial.write('0');
         }
-        
+
         Serial.print(lastEntryNum[i], HEX);
-  
+
         ES.getTitle(lastEntryNum[i], eName);
         ptxt(") - ");
         Serial.write(eName);
@@ -1567,7 +1553,7 @@ void repeatEntry(uint8_t show)
         ptxt( "]\r\n");
       }
     }
- 
+
     if(show)
     {
       ptxt("[%/ENT] %");
@@ -1585,7 +1571,7 @@ void repeatEntry(uint8_t show)
     } else {
       i=cur;
     }
-    fireEntry(lastEntryCmd[i], lastEntryNum[i], 0 );    
+    fireEntry(lastEntryCmd[i], lastEntryNum[i], 0 );
   } else {
     ptxt("\r\n[not set]\r\n>");
   }
@@ -1599,7 +1585,7 @@ void loop()
   uint8_t p=0;
   uint8_t cmdType=0;
   uint8_t btnCoolDown=200;
-  
+
 
   macroNum = -1;
 
@@ -1627,16 +1613,16 @@ void loop()
     return;
   }
 
-  
+
   //Turn on power to EEPROM
   I2E.power(HIGH);
 
-   
+
   //Login procedure
   if( login(1) )
   {
     ptxt("Space for quick-help\r\n>");
-    
+
     //Interpret commands and call appropiate functions.
     while(Serial)
     {
@@ -1647,7 +1633,7 @@ void loop()
        {
          Serial.write(cmd[p]);
        }
-       
+
        //Handle backspace, we abort whatever was going on.
        if(cmd[p]==8)
        {
@@ -1677,7 +1663,7 @@ void loop()
          {
            Serial.write('%');
            fireEntry(CMD_FIRE_PASS, collectNum(), 0 );
-           p=0;           
+           p=0;
          } else if( cmd[0] == 's' )
          {
            Serial.write('%');
@@ -1725,7 +1711,7 @@ void loop()
          }else if( cmd[0] == 'X' )
          {
           ptxtln("[auto]");
-          cmdType=CMD_ROBOT; 
+          cmdType=CMD_ROBOT;
          } else if( cmd[0] == 'r' )
          {
            repeatEntry(1);
@@ -1776,7 +1762,7 @@ void loop()
                    return;
                  }
                } else {
-                ptxtln("\r\n[abort]"); 
+                ptxtln("\r\n[abort]");
                }
              break;
              case 'p':
@@ -1821,7 +1807,7 @@ void loop()
                ptxtln("[unknown]");
               break;
            }
-           
+
            Serial.print(F("\r\n>"));
            p=0;
          } else if( cmdType == CMD_SEARCH_TRIG )
@@ -1881,12 +1867,12 @@ void loop()
          }
 
          p=0;
-       } //Second character 
+       } //Second character
        btnCoolDown=500;
        lockTimeout=millis();  // update lock timeout with every incoming char
        lockCountdown=0;
       } //Incoming char
-      
+
       //We detect macro btn press here
       if( !digitalRead(btnPin) && btnCoolDown == 0 )
       {
@@ -1919,11 +1905,9 @@ void loop()
     } //Serial connected
 
   } //Device unlocked
-  
-  
+
+
   //Turn off power to EEPROM
   I2E.power(LOW);
 
 }
-
-
