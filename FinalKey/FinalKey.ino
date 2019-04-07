@@ -88,6 +88,7 @@ uint8_t keyMap = 0;
 uint8_t keyMapUtf8 = 0;
 uint8_t utf8Warn = 0;
 unsigned long lockTimeout = 0;
+unsigned long lockCountdown = 0;
 
 
 //Actually saves a bit of memory to have this function and the char array, instead of printing it each time, clears the screen, don't abuse.
@@ -194,7 +195,7 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
       } else if( inchar >= UTF8)
       {
         isUtf8 = true;  // next char is 2nd Byte of UTF8 code
-        if(scramble)  // don't think that scramble works with UTF8
+        if(scramble)
         {
           inchar = (inchar^random(254)+1)&0xFF;
         }
@@ -214,7 +215,7 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
           ptxt("\r\n[Unsupported:");Serial.print(inchar);  //ptxtln("]");  // testing
           goto GETSTR_RETERR;
         } else {
-          if(scramble)  // don't think that scramble works with UTF8
+          if(scramble)
           {
             inchar = (inchar^random(254)+1)&0xFF;
           }
@@ -541,6 +542,7 @@ uint8_t login(bool header)
     if( ES.unlock( (byte*)key ) )
     {
        lockTimeout = millis();
+       lockCountdown=0;
        ret=1;
        if(header)
         {
@@ -1860,6 +1862,7 @@ void loop()
        } //Second character 
        btnCoolDown=500;
        lockTimeout=millis();  // update lock timeout with every incoming char
+       lockCountdown=0;
       } //Incoming char
       
       //We detect macro btn press here
@@ -1877,12 +1880,19 @@ void loop()
         btnCoolDown--;
       }
       // check lock timeout
+      if( (millis() - lockTimeout - lockCountdown) > 60000)
+      {
+        lockCountdown += 60000;
+        ptxt("[auto-lock in ");
+        Serial.print((AUTO_LOCK_TIME + lockTimeout - millis()) / 60000 + 1);
+        ptxt(" minutes]\r\n>");
+      }
       if( (millis() - lockTimeout) > AUTO_LOCK_TIME)
       {
         ES.lock();
         ptxt("[auto-lock]");
-       delay(500);
-       return;
+        delay(500);
+        return;
       }
     } //Serial connected
 
