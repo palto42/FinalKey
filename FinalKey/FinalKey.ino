@@ -110,7 +110,7 @@ void clearSerialInput()
 #define UTF8_1 0xc3
 #define extChar 92
 #define doubleChar 95
-#define maxChar 112
+#define maxChar 113  // +1 due to UTF8 double-byte steps
 const unsigned char passChars[] = {
 '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E',
 'F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T',
@@ -143,7 +143,8 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
   unsigned char inchar;
   uint8_t index=0;
   char scramble=0;
-  bool isUtf8=false;
+  unsigned char isUtf8=0;
+  
 
   memset( dst, 0, numChars+1 );
   while( 1 )
@@ -191,17 +192,8 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
       } else if( index == numChars ) //If this key makes the string longer than allowed
       {
         goto GETSTR_RETERR;
-      } else if( inchar >= UTF8)
-      {
-        isUtf8 = true;  // next char is 2nd Byte of UTF8 code
-        if(scramble)
-        {
-          inchar = (inchar^random(254)+1)&0xFF;
-        }
-        dst[index++] = inchar;
       } else if( isUtf8 )
       {
-        isUtf8 = false;
         for(keycheck=doubleChar; keycheck < maxChar; keycheck+=2 ) // check UTF8
         {
           if(passChars[keycheck+1] == inchar)
@@ -211,15 +203,29 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
         }
         if(keycheck == maxChar )
         {
-          ptxt("\r\n[Unsupported:");Serial.print(inchar);ptxtln("]");
+          Serial.write(inchar);
+          ptxt("\r\n[Unsupported UTF8:");
+          Serial.write(isUtf8);
+          Serial.write(inchar);
+          ptxtln("]");
+          isUtf8 = 0;
           goto GETSTR_RETERR;
         } else {
+          isUtf8 = 0;
           if(scramble)
           {
             inchar = (inchar^random(254)+1)&0xFF;
           }
           dst[index++] = inchar;
         }
+      } else if( inchar >= UTF8)
+      {
+        isUtf8 = inchar;  // next char is 2nd Byte of UTF8 code
+        if(scramble)
+        {
+          inchar = (inchar^random(254)+1)&0xFF;
+        }
+        dst[index++] = inchar;
       } else
       {
         for(keycheck=0; keycheck < doubleChar; keycheck++ ) // check non-UTF8
@@ -231,7 +237,9 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
         }
         if(keycheck == doubleChar )
         {
-          ptxt("\r\n[Unsupported:");Serial.print(inchar);ptxtln("]");
+          ptxt("\r\n[Unsupported:");
+          Serial.write(inchar);
+          ptxtln("]");
           goto GETSTR_RETERR;
         } else {
           
