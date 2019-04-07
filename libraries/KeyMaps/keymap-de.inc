@@ -99,7 +99,7 @@ const uint8_t DEPC_asciimap[256] PROGMEM =
 	0x25,ALT,   // [
 	0x2d,ALT,   // bslash from key 7 or 0x54 NOMOD fromNumberpad (quotient), top row second, next to NUM key// 
 	0x26,ALT ,  // ]
-	0x00,NOMOD, // ^ - unsupported, since some systems requires it to be pressed twice, while others only one
+	0x35,NOMOD, // ^  requires SPACE to be typed!
 	0x38,SHIFT, // _
 	0x2e,SHIFT, // `
 	0x04,NOMOD, // a
@@ -131,7 +131,7 @@ const uint8_t DEPC_asciimap[256] PROGMEM =
 	0x24,ALT,  // {
 	0x64,ALT,  // |
 	0x27,ALT,  // }
-	0x00,NOMOD,     // ~ - unsupported, since some systems requires it to be pressed twice, while others only one
+	0x30,ALT,  // ~
 	0,NOMOD	    // DEL
 };
 

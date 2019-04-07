@@ -14,6 +14,14 @@
 
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  
+  Modified version:
+    Author: palto42
+    Date: 07.04.2019
+    Main changed:
+      - limited UTF8 support on German keyboards (ÄÖÜäöüß§°)
+      - some extra special characters (~^`)
+      - auto-lock timeout 5min inactivity
 */
 
 #include <TermTool.h>
@@ -65,6 +73,8 @@
 #define BTN_TIMEOUT_NO_TIMEOUT -1
 //How many ms should the button be held before it means "abort", I like this one.
 #define BTN_HOLD_TIME_FOR_ABORT 700
+// Auto-lock time in ms (5min = 300,000ms)
+#define AUTO_LOCK_TIME 300000
 
 //fireEntry will set these
 uint8_t lastEntryCmd[]={0,0,0,0}, lastEntryIdx=0;
@@ -74,6 +84,11 @@ uint16_t lastEntryNum[]={0,0,0,0};
 
 const char clsStr[] = { 27, '[', '2','J',27,'[','H',0 };
 unsigned char utf8First = 0;  // First char of a UTF8 sequence, 0 = no UTF8 code
+uint8_t keyMap = 0;
+uint8_t keyMapUtf8 = 0;
+uint8_t utf8Warn = 0;
+unsigned long lockTimeout = 0;
+
 
 //Actually saves a bit of memory to have this function and the char array, instead of printing it each time, clears the screen, don't abuse.
 void cls()
@@ -91,9 +106,12 @@ void clearSerialInput()
 }
 
 //These are the characters that can be used in passwords, they are arranged in this way for easy implementation of the optional "use specials" feature of the password generator.
-#define UTF8 char(0xc3)
-
-const char passChars[] = {
+#define UTF8 0xc2
+#define UTF8_1 0xc3
+#define extChar 92
+#define doubleChar 95
+#define maxChar 112
+const unsigned char passChars[] = {
 '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E',
 'F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T',
 'U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i',
@@ -101,9 +119,11 @@ const char passChars[] = {
 'y','z','!','"','#','$','%','&','@','?','(',')','[',']','-', // <75 (idx 75)
 '.',',','+','{','}','_','/','<','>','=','|','\'','\\', 
 ';',':',' ','*', // <- 92 (idx 91)
-UTF8, 0x84, UTF8, 0x96, UTF8, 0x9c, // Ä Ö Ü
-UTF8, 0xA4, UTF8, 0xB6, UTF8, 0xBc, // ä ö ü
-UTF8, 0x9f // ß  <- 106 (idx 105)
+'~',  // usually supported
+'^','`',  // double stroke on DE <- 95 (idx 94)
+UTF8_1, 0x84, UTF8_1, 0x96, UTF8_1, 0x9c, // Ä Ö Ü
+UTF8_1, 0xA4, UTF8_1, 0xB6, UTF8_1, 0xBc, // ä ö ü
+UTF8_1, 0x9f, UTF8, 0xA7, UTF8, 0xB0 // ß § ° <- 112 (idx 111)
 };
 
 //Reads string from serial, zero terminates the string
@@ -120,7 +140,7 @@ void setRng()
 bool getStr( char* dst, const uint8_t numChars, bool echo )
 {
   uint8_t keycheck;
-  char inchar;
+  unsigned char inchar;
   uint8_t index=0;
   char scramble=0;
   bool isUtf8=false;
@@ -155,7 +175,7 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
         } else if(index > 0 )
         {
           dst[--index]=0;
-          if(dst[index-1]==UTF8)  // UTF8 has 2 Bytes
+          if(dst[index-1]>=UTF8)  // UTF8 has 2 Bytes
           {
             dst[--index]=0;
           }
@@ -171,7 +191,7 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
       } else if( index == numChars ) //If this key makes the string longer than allowed
       {
         goto GETSTR_RETERR;
-      } else if( inchar == UTF8)
+      } else if( inchar >= UTF8)
       {
         isUtf8 = true;  // next char is 2nd Byte of UTF8 code
         if(scramble)  // don't think that scramble works with UTF8
@@ -182,16 +202,16 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
       } else if( isUtf8 )
       {
         isUtf8 = false;
-        for(keycheck=92; keycheck < 106; keycheck+=2 ) // check UTF8
+        for(keycheck=doubleChar; keycheck < maxChar; keycheck+=2 ) // check UTF8
         {
           if(passChars[keycheck+1] == inchar)
           {
             break;
           }
         }
-        if(keycheck == 106 )
+        if(keycheck == maxChar )
         {
-          ptxt("\r\n[Unsupported:");Serial.print(inchar);ptxtln("]");
+          ptxt("\r\n[Unsupported:");Serial.print(inchar);  //ptxtln("]");  // testing
           goto GETSTR_RETERR;
         } else {
           if(scramble)  // don't think that scramble works with UTF8
@@ -202,14 +222,14 @@ bool getStr( char* dst, const uint8_t numChars, bool echo )
         }
       } else
       {
-        for(keycheck=0; keycheck < 92; keycheck++ ) // check non-UTF8
+        for(keycheck=0; keycheck < doubleChar; keycheck++ ) // check non-UTF8
         {
           if(passChars[keycheck] == inchar)
           {
             break;
           }
         }
-        if(keycheck == 92 )
+        if(keycheck == doubleChar )
         {
           ptxt("\r\n[Unsupported:");Serial.print(inchar);ptxtln("]");
           goto GETSTR_RETERR;
@@ -301,10 +321,85 @@ void getKbLayout()
       {
         ptxtln("\r\n[Invalid choice]");
       } else {
-        kbmaps.setKbMap(k);
-        if( testChars() )
+        kbmaps.setKbMap(k); 
+        if( testChars(k) )
         {
           ES.setKeyboardLayout(k);
+          keyMap=k;
+          if( keyMap == KBMAP_DEPC )
+          {
+            keyMapUtf8=KBMAP_USPC;
+          }
+          else if ( keyMap == KBMAP_DEMAC )
+          {
+            keyMapUtf8=KBMAP_USMAC;
+          } else
+          {
+            keyMap = 0;  // no UTF8 support yet
+          }
+          ptxtln("\r\n[saved]");
+          return;
+        }
+      }
+    Serial.println();
+  }//While 1 ends here
+}
+
+void setAutoLock()
+{
+  uint8_t k;
+  while(1)
+  {
+    ptxtln("Enter auto-lock time (1-256 minutes, 0=off):");
+  ptxt("% ");
+    
+    k = getOneChar()-'0';
+      switch(k)
+      {
+        #ifdef KBMAP_A
+        case 1:
+          k=KBMAP_A;
+        break;
+        #endif
+        #ifdef KBMAP_B
+        case 2:
+          k=KBMAP_B;
+        break;
+        #endif
+        #ifdef KBMAP_C
+        case 3:
+          k=KBMAP_C;
+        break;
+        #endif
+        #ifdef KBMAP_D
+        case 4:
+          k=KBMAP_D;
+        break;
+        #endif
+        default:
+          k=INVALID_KEYBOARD_LAYOUT;
+        break;
+      }
+      if( k == INVALID_KEYBOARD_LAYOUT )
+      {
+        ptxtln("\r\n[Invalid choice]");
+      } else {
+        kbmaps.setKbMap(k); 
+        if( testChars(k) )
+        {
+          ES.setKeyboardLayout(k);
+          keyMap=k;
+          if( keyMap == KBMAP_DEPC )
+          {
+            keyMapUtf8=KBMAP_USPC;
+          }
+          else if ( keyMap == KBMAP_DEMAC )
+          {
+            keyMapUtf8=KBMAP_USMAC;
+          } else
+          {
+            keyMap = 0;  // no UTF8 support yet
+          }
           ptxtln("\r\n[saved]");
           return;
         }
@@ -445,16 +540,30 @@ uint8_t login(bool header)
    
     if( ES.unlock( (byte*)key ) )
     {
+       lockTimeout = millis();
        ret=1;
        if(header)
         {
           ptxtln("\r\n[Granted]");
-          kbmaps.setKbMap(ES.getKeyboardLayout());
+          keyMap=ES.getKeyboardLayout();
+          kbmaps.setKbMap(keyMap);
+          if( keyMap == KBMAP_DEPC )
+          {
+            keyMapUtf8=KBMAP_USPC;
+          }
+          else if ( keyMap == KBMAP_DEMAC )
+          {
+            keyMapUtf8=KBMAP_USMAC;
+          } else
+          {
+            keyMap = 0;  // no UTF8 support yet
+          }
         }        
      } else {
        if(header)
        {
          ptxtln("\r\n[Denied]");
+         delay(1000);
        }
      }
   }
@@ -525,39 +634,57 @@ void typeUtf8( unsigned char c )
   if( utf8First > 0 )  // this is the second char of a UTF8 code
   {
     // Keyboard_writeUtf8Character (utf8First, ch)
-    if( utf8First == 0xC3)  // KBMAP_A must be in use and DE to work
+    if( utf8First >= UTF8 ) // interpret UTF8 - currently no need to distinguish 0xC2 / 0xC3
     {
-      kbmaps.setKbMapQ(KBMAP_B);
-      switch(c) {
-        case 0xA4:  //ä
-          Keyboard.write('\'');
-        break;
-        case 0xB6:  //ö
-          Keyboard.write(';');
-        break;
-        case 0xBC:  //ü
-          Keyboard.write('[');
-        break;
-        case 0x84:  //Ä
-          Keyboard.write('"');
-        break;
-        case 0x96:  //Ö
-          Keyboard.write(':');
-        break;
-        case 0x9C:  //Ü
-          Keyboard.write('{');
-        break;
-        case 0x9f:  //ß
-          Keyboard.write('-');
-        break;
+      if( keyMap > 0)  // UTF8 supported
+      {
+        kbmaps.setKbMapQ(keyMapUtf8);  // select US keyboard
+        switch(c)
+        {
+          case 0xA4:  //ä
+            Keyboard.write('\'');
+          break;
+          case 0xB6:  //ö
+            Keyboard.write(';');
+          break;
+          case 0xBC:  //ü
+            Keyboard.write('[');
+          break;
+          case 0x84:  //Ä
+            Keyboard.write('"');
+          break;
+          case 0x96:  //Ö
+            Keyboard.write(':');
+          break;
+          case 0x9C:  //Ü
+            Keyboard.write('{');
+          break;
+          case 0x9f:  //ß
+            Keyboard.write('-');
+          break;
+          case 0xA7:  //§
+            Keyboard.write('#');
+          break;
+          case 0xB0:  //°
+            Keyboard.write('~');
+          break;
+        }
+        kbmaps.setKbMapQ(keyMap);  // select original keyboard
+      } else  // UTF8 not supported
+      {
+        utf8First = 0;
+        utf8Warn = 1;
       }
-      kbmaps.setKbMapQ(KBMAP_A);  // select DE keyboard
-    }      
     utf8First = 0;
+    }
   }
   else if( c < 128 ) // char is standard code
   {
     Keyboard.write(c);
+    if((c == '^' || c == '`') && (keyMap == KBMAP_DEPC || keyMap == KBMAP_DEMAC))
+    {
+      Keyboard.write(' ');
+    }
   }
   else
   { 
@@ -573,22 +700,50 @@ void printUtf8( char* str)
     typeUtf8(str[i]);
     i++;
   }
+  if( utf8Warn)
+  {
+    ptxt("\r\n[Error: string contained UTF8 character not supported on current keyboard!]\r\n");
+    utf8Warn = 0;
+  }
 }
 
-bool testChars()
+bool testChars(int k)
 {
   int i;
+  int max = extChar;
+  char utf[] = "Ä";  // dummy UTF8
+  
   ptxt("\r\nTo verify the selected layout works, focus a blank text-field\r\nthen press the key or long-press to skip the test.\r\n#");
   if(btnWait(BTN_TIMEOUT_NO_TIMEOUT))
   {
     ptxt("Supported specials:");
     Keyboard.print("Supported specials:");
-    for(i=62; i < 92; i++)
+    if(k == KBMAP_DEPC || k == KBMAP_DEMAC)
     {
-      Serial.print(passChars[i]);
+      max = maxChar;
+    }
+    for(i=62; i < max; i++)
+    {
+      if( i < doubleChar)
+      {
+        Serial.print(char(passChars[i]));
+        typeUtf8(passChars[i]);
+      } else
+      {
+        utf[0] = passChars[i];
+        utf[1] = passChars[i+1];
+        Serial.print(utf);
+        typeUtf8(passChars[i++]);
+        typeUtf8(passChars[i]);
+      }
       delay(10);
-      Keyboard.press(passChars[i]);
-      Keyboard.release(passChars[i]);
+      
+//      if(i >= doubleChar)
+//      {
+//        typeUtf8(passChars[i++]);
+//      }
+//      Keyboard.press(passChars[i]);
+//      Keyboard.release(passChars[i]);
     }
     ptxt("\r\nLayout correct if identical to above line.\r\nCorrect [y/n] ?");
     if( getOneChar() == 'y' )
@@ -605,7 +760,7 @@ bool testChars()
 void putRandomChars( char* dst, uint8_t len, uint8_t useSpecial, char* specials )
 {
   char pool[256];
-  long maxRv = (useSpecial)?91:61; //Not numbers but indexes
+  long maxRv = (useSpecial)?extChar-1:61; //Not numbers but indexes
     
   memcpy( pool, passChars, maxRv );
   
@@ -814,7 +969,6 @@ int collectNum()
   Serial.println();  
   return(strToHex(inp));
 }
-
 
 void newAccount(int entryNum)
 {
@@ -1457,11 +1611,11 @@ void loop()
   //Login procedure
   if( login(1) )
   {
-    ptxt("Space for quickhelp\r\n>");
+    ptxt("Space for quick-help\r\n>");
     
     //Interpret commands and call appropiate functions.
     while(Serial)
-    {      
+    {
       while(Serial.available())
       {
        cmd[p]=Serial.read();
@@ -1705,7 +1859,7 @@ void loop()
          p=0;
        } //Second character 
        btnCoolDown=500;
-       
+       lockTimeout=millis();  // update lock timeout with every incoming char
       } //Incoming char
       
       //We detect macro btn press here
@@ -1722,7 +1876,14 @@ void loop()
       {
         btnCoolDown--;
       }
-      
+      // check lock timeout
+      if( (millis() - lockTimeout) > AUTO_LOCK_TIME)
+      {
+        ES.lock();
+        ptxt("[auto-lock]");
+       delay(500);
+       return;
+      }
     } //Serial connected
 
   } //Device unlocked
